@@ -8,19 +8,22 @@ import binascii
 
 ICMP_ECHO_REQUEST = 8
 
+# NOTE : This code was written by Python 3.7.0
+# POSTECH CSE, Kang DeokHyung
+
 def checksum(string): 
 	csum = 0
 	countTo = (len(string) // 2) * 2  
 	count = 0
 
 	while count < countTo:
-		thisVal = ord(string[count+1]) * 256 + ord(string[count]) 
+		thisVal = string[count+1] * 256 + string[count]
 		csum = csum + thisVal 
 		csum = csum & 0xffffffff  
 		count = count + 2
 	
 	if countTo < len(string):
-		csum = csum + ord(string[len(string) - 1])
+		csum = csum + string[len(string) - 1]
 		csum = csum & 0xffffffff 
 	
 	csum = (csum >> 16) + (csum & 0xffff)
@@ -50,18 +53,17 @@ def receiveOnePing(mySocket, ID, timeout, destAddr):
 		# Fetch the ICMPHeader from the IP
 		icmpHeader = recPacket[20: 28]
 
-		rawTTL = struct.unpack("s", bytes([recPacket[8]]))[0]  
+		rawTTL = struct.unpack("s", bytes([recPacket[8]]))[0]
 		
 		# binascii -- Convert binary and ASCII  
-		TTL = int(binascii.hexlify(rawTTL), 16) 
+		TTL = int(binascii.hexlify(rawTTL), 16)
 		
 		icmpType, code, checksum, packetID, sequence = struct.unpack("bbHHh", icmpHeader)
 		
 		# Return "Reply from %s: bytes=%d time=%f5ms TTL=%d" if `packetID` matches with `ID`
 		if packetID == ID:
 			packet_bytes = len(recPacket)
-			bytes = struct.calcsize("d")
-			timeSent = struct.unpack("d", recPacket[28:28 + bytes])[0]
+			timeSent = struct.unpack("d", recPacket[28:28 +  struct.calcsize("d")])[0]
 			timeElapsed = (timeReceived - timeSent) * 1000
 			return "Reply from %s: bytes=%d time=%f5ms TTL=%d" % (destAddr, packet_bytes, timeElapsed, TTL)
 
@@ -84,10 +86,10 @@ def sendOnePing(mySocket, destAddr, ID):
 	
 	# Get the right checksum, and put in the header
 	if sys.platform == 'darwin':
-		# TODO: Convert 16-bit integers from host to network byte order
-		myChecksum = socket.htons(myChecksum) & 0xffff
+		# Convert 16-bit integers from host to network byte order
+		myChecksum = htons(myChecksum) & 0xffff
 	else:
-		myChecksum = socket.htons(myChecksum)
+		myChecksum = htons(myChecksum)
 		
 	# Create header
 	header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, myChecksum, ID, 1)
@@ -105,7 +107,7 @@ def doOnePing(destAddr, timeout):
 	mySocket = socket(AF_INET, SOCK_RAW, icmp)
 	
 	myID = os.getpid() & 0xFFFF  # Return the current process i
-	# TODO: Measure a delay
+	# Measure a delay
 	sendOnePing(mySocket, destAddr, myID)
 	delay = receiveOnePing(mySocket, myID, timeout, destAddr)
 	
